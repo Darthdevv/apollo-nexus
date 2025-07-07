@@ -3,6 +3,7 @@ import { useQuery, useLazyQuery, useMutation, gql } from "@apollo/client";
 import { useState } from "react";
 import Card from "./components/Card";
 import PlusIcon from "./assets/icons/PlusIcon";
+import { motion, AnimatePresence } from "framer-motion";
 
 // GraphQL Queries & Mutations
 const GET_USERS = gql`
@@ -133,18 +134,24 @@ function App() {
     <div className="p-6 w-full mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">User Management</h1>
-        <button
+        <motion.button
+          whileTap={{ scale: 0.9 }}
           className="bg-cardcolor text-white py-2 px-3 rounded text-xl"
           onClick={openCreateModal}
         >
           <PlusIcon />
-        </button>
+        </motion.button>
       </div>
 
       {/* User List */}
       <ul className="space-y-4">
         {data.users.map((user: { id: string; name: string; email: string }) => (
-          <li key={user.id}>
+          <motion.li
+            key={user.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
             <Card
               name={user.name}
               email={user.email}
@@ -152,87 +159,113 @@ function App() {
               onEdit={() => openEditModal(user)}
               onClick={() => handleViewUser(user.id)}
             />
-          </li>
+          </motion.li>
         ))}
       </ul>
 
       {/* Create/Edit Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50">
-          <div className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg space-y-4 border border-border">
-            <h2 className="text-lg font-semibold mb-2">
-              {editingUserId ? "Edit User" : "Add New User"}
-            </h2>
-            <input
-              type="text"
-              placeholder="Name"
-              className="border border-border bg-cardcolor rounded-lg p-2 w-full text-base"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              className="border border-border bg-cardcolor rounded-lg p-2 w-full text-base"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-            <div className="flex justify-end space-x-2 mt-4">
-              <button
-                onClick={closeModal}
-                className="text-foreground border px-4 py-2 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="bg-foreground text-background px-4 py-2 rounded"
-                disabled={creating || updating}
-              >
-                {editingUserId ? "Update" : "Create"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg space-y-4 border border-border"
+            >
+              <h2 className="text-lg font-semibold mb-2">
+                {editingUserId ? "Edit User" : "Add New User"}
+              </h2>
+              <input
+                type="text"
+                placeholder="Name"
+                className="border border-border bg-cardcolor rounded-lg p-2 w-full text-base"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                className="border border-border bg-cardcolor rounded-lg p-2 w-full text-base"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+              <div className="flex justify-end space-x-2 mt-4">
+                <button
+                  onClick={closeModal}
+                  className="text-foreground border px-4 py-2 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  className="bg-foreground text-background px-4 py-2 rounded"
+                  disabled={creating || updating}
+                >
+                  {editingUserId ? "Update" : "Create"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* User Detail Modal */}
-      {viewingUserId && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50">
-          <div className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg border border-border space-y-4">
-            {loadingUser ? (
-              <p className="text-center">Loading user...</p>
-            ) : errorUser ? (
-              <p className="text-center text-red-500">
-                Error: {errorUser.message}
-              </p>
-            ) : userData?.user ? (
-              <>
-                <h2 className="text-xl font-bold">User Details</h2>
-                <p>
-                  <span className="font-semibold">Name:</span>{" "}
-                  {userData.user.name}
+      <AnimatePresence>
+        {viewingUserId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg space-y-4 border border-border"
+            >
+              {loadingUser ? (
+                <p className="text-center">Loading user...</p>
+              ) : errorUser ? (
+                <p className="text-center text-red-500">
+                  Error: {errorUser.message}
                 </p>
-                <p>
-                  <span className="font-semibold">Email:</span>{" "}
-                  {userData.user.email}
-                </p>
-              </>
-            ) : (
-              <p className="text-center">User not found</p>
-            )}
+              ) : userData?.user ? (
+                <>
+                  <h2 className="text-xl font-bold">User Details</h2>
+                  <p>
+                    <span className="font-semibold">Name:</span>{" "}
+                    {userData.user.name}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Email:</span>{" "}
+                    {userData.user.email}
+                  </p>
+                </>
+              ) : (
+                <p className="text-center">User not found</p>
+              )}
 
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={closeDetailModal}
-                className="bg-foreground text-background px-4 py-2 rounded"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={closeDetailModal}
+                  className="bg-foreground text-background px-4 py-2 rounded"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
