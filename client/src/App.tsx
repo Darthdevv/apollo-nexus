@@ -4,7 +4,7 @@ import { useState } from "react";
 import Card from "./components/Card";
 import PlusIcon from "./assets/icons/PlusIcon";
 
-// GraphQL queries & mutations
+// GraphQL Queries & Mutations
 const GET_USERS = gql`
   query GetUsers {
     users {
@@ -15,7 +15,7 @@ const GET_USERS = gql`
   }
 `;
 
-const GET_USER_BY_ID  = gql`
+const GET_USER_BY_ID = gql`
   query GetUserById($id: ID!) {
     user(id: $id) {
       id
@@ -53,57 +53,50 @@ const DELETE_USER = gql`
 
 function App() {
   const { loading, error, data, refetch } = useQuery(GET_USERS);
-  const [createUser] = useMutation(CREATE_USER);
-  const [updateUser] = useMutation(UPDATE_USER);
+  const [createUser, { loading: creating }] = useMutation(CREATE_USER);
+  const [updateUser, { loading: updating }] = useMutation(UPDATE_USER);
   const [deleteUser] = useMutation(DELETE_USER);
-  const [getUserById] = useLazyQuery(GET_USER_BY_ID, {
+  const [
+    getUserById,
+    { loading: loadingUser, data: userData, error: errorUser },
+  ] = useLazyQuery(GET_USER_BY_ID, {
     fetchPolicy: "network-only",
-    onCompleted: (data) => {
-      if (data?.user) {
-        setSelectedUser(data.user);
-      }
-    },
   });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [selectedUser, setSelectedUser] = useState<null | {
-    id: string;
-    name: string;
-    email: string;
-  }>(null);
-
-  const handleViewUser = (id: string) => {
-    getUserById({ variables: { id } });
-  };
+  const [form, setForm] = useState({ name: "", email: "" });
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
 
   const openCreateModal = () => {
     setEditingUserId(null);
-    setName("");
-    setEmail("");
+    setForm({ name: "", email: "" });
     setModalOpen(true);
   };
 
   const openEditModal = (user: { id: string; name: string; email: string }) => {
     setEditingUserId(user.id);
-    setName(user.name);
-    setEmail(user.email);
+    setForm({ name: user.name, email: user.email });
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
-    setName("");
-    setEmail("");
     setEditingUserId(null);
+    setForm({ name: "", email: "" });
   };
 
   const handleSubmit = async () => {
+    const { name, email } = form;
     if (!name || !email) return;
 
     if (editingUserId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const original = data.users.find((u: any) => u.id === editingUserId);
+      if (original?.name === name && original?.email === email) {
+        closeModal();
+        return;
+      }
       await updateUser({ variables: { id: editingUserId, name, email } });
     } else {
       await createUser({ variables: { name, email } });
@@ -118,16 +111,30 @@ function App() {
     refetch();
   };
 
-  if (loading) return <p className="flex items-center justify-center">Loading...</p>;
-  if (error) return <p className="flex items-center justify-center">Error: {error.message}</p>;
-  if (!data || !data.users) return <p className="flex items-center justify-center">No users found</p>;
+  const handleViewUser = (id: string) => {
+    setViewingUserId(id);
+    getUserById({ variables: { id } });
+  };
+
+  const closeDetailModal = () => {
+    setViewingUserId(null);
+  };
+
+  if (loading)
+    return <p className="flex items-center justify-center">Loading...</p>;
+  if (error)
+    return (
+      <p className="flex items-center justify-center">Error: {error.message}</p>
+    );
+  if (!data?.users)
+    return <p className="flex items-center justify-center">No users found</p>;
 
   return (
     <div className="p-6 w-full mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">User Management</h1>
         <button
-          className="bg-cardcolor  text-white py-2 px-3 rounded text-xl"
+          className="bg-cardcolor text-white py-2 px-3 rounded text-xl"
           onClick={openCreateModal}
         >
           <PlusIcon />
@@ -149,7 +156,7 @@ function App() {
         ))}
       </ul>
 
-      {/* Modal */}
+      {/* Create/Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50">
           <div className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg space-y-4 border border-border">
@@ -160,15 +167,15 @@ function App() {
               type="text"
               placeholder="Name"
               className="border border-border bg-cardcolor rounded-lg p-2 w-full text-base"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
             <input
               type="email"
               placeholder="Email"
               className="border border-border bg-cardcolor rounded-lg p-2 w-full text-base"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
             <div className="flex justify-end space-x-2 mt-4">
               <button
@@ -180,6 +187,7 @@ function App() {
               <button
                 onClick={handleSubmit}
                 className="bg-foreground text-background px-4 py-2 rounded"
+                disabled={creating || updating}
               >
                 {editingUserId ? "Update" : "Create"}
               </button>
@@ -188,20 +196,35 @@ function App() {
         </div>
       )}
 
-      {/* Detail Modal */}
-      {selectedUser && (
+      {/* User Detail Modal */}
+      {viewingUserId && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50">
           <div className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg border border-border space-y-4">
-            <h2 className="text-xl font-bold">User Details</h2>
-            <p>
-              <span className="font-semibold">Name:</span> {selectedUser.name}
-            </p>
-            <p>
-              <span className="font-semibold">Email:</span> {selectedUser.email}
-            </p>
+            {loadingUser ? (
+              <p className="text-center">Loading user...</p>
+            ) : errorUser ? (
+              <p className="text-center text-red-500">
+                Error: {errorUser.message}
+              </p>
+            ) : userData?.user ? (
+              <>
+                <h2 className="text-xl font-bold">User Details</h2>
+                <p>
+                  <span className="font-semibold">Name:</span>{" "}
+                  {userData.user.name}
+                </p>
+                <p>
+                  <span className="font-semibold">Email:</span>{" "}
+                  {userData.user.email}
+                </p>
+              </>
+            ) : (
+              <p className="text-center">User not found</p>
+            )}
+
             <div className="flex justify-end mt-4">
               <button
-                onClick={() => setSelectedUser(null)}
+                onClick={closeDetailModal}
                 className="bg-foreground text-background px-4 py-2 rounded"
               >
                 Close
