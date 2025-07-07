@@ -1,5 +1,5 @@
 import "./App.css";
-import { useQuery, useMutation, gql } from "@apollo/client";
+import { useQuery, useLazyQuery, useMutation, gql } from "@apollo/client";
 import { useState } from "react";
 import Card from "./components/Card";
 import PlusIcon from "./assets/icons/PlusIcon";
@@ -8,6 +8,16 @@ import PlusIcon from "./assets/icons/PlusIcon";
 const GET_USERS = gql`
   query GetUsers {
     users {
+      id
+      name
+      email
+    }
+  }
+`;
+
+const GET_USER_BY_ID  = gql`
+  query GetUserById($id: ID!) {
+    user(id: $id) {
       id
       name
       email
@@ -46,11 +56,28 @@ function App() {
   const [createUser] = useMutation(CREATE_USER);
   const [updateUser] = useMutation(UPDATE_USER);
   const [deleteUser] = useMutation(DELETE_USER);
+  const [getUserById] = useLazyQuery(GET_USER_BY_ID, {
+    fetchPolicy: "network-only",
+    onCompleted: (data) => {
+      if (data?.user) {
+        setSelectedUser(data.user);
+      }
+    },
+  });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [selectedUser, setSelectedUser] = useState<null | {
+    id: string;
+    name: string;
+    email: string;
+  }>(null);
+
+  const handleViewUser = (id: string) => {
+    getUserById({ variables: { id } });
+  };
 
   const openCreateModal = () => {
     setEditingUserId(null);
@@ -103,7 +130,7 @@ function App() {
           className="bg-cardcolor  text-white py-2 px-3 rounded text-xl"
           onClick={openCreateModal}
         >
-            <PlusIcon />
+          <PlusIcon />
         </button>
       </div>
 
@@ -116,6 +143,7 @@ function App() {
               email={user.email}
               onDelete={() => handleDelete(user.id)}
               onEdit={() => openEditModal(user)}
+              onClick={() => handleViewUser(user.id)}
             />
           </li>
         ))}
@@ -154,6 +182,29 @@ function App() {
                 className="bg-foreground text-background px-4 py-2 rounded"
               >
                 {editingUserId ? "Update" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50">
+          <div className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg border border-border space-y-4">
+            <h2 className="text-xl font-bold">User Details</h2>
+            <p>
+              <span className="font-semibold">Name:</span> {selectedUser.name}
+            </p>
+            <p>
+              <span className="font-semibold">Email:</span> {selectedUser.email}
+            </p>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="bg-foreground text-background px-4 py-2 rounded"
+              >
+                Close
               </button>
             </div>
           </div>
