@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import "./App.css";
 import { useQuery, useLazyQuery, useMutation } from "@apollo/client";
 import { useState } from "react";
 import Card from "./components/Card";
 import PlusIcon from "./assets/icons/PlusIcon";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast, Toaster } from "react-hot-toast";
 import UserFormModal from "./components/forms/UserFormModal";
 import UserDetailsModal from "./components/forms/UserDetailsModal";
 import {
@@ -51,25 +53,85 @@ function App() {
     const { name, email } = form;
     if (!name || !email) return;
 
-    if (editingUserId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const original = data.users.find((u: any) => u.id === editingUserId);
-      if (original?.name === name && original?.email === email) {
-        closeModal();
-        return;
+    try {
+      if (editingUserId) {
+        const original = data.users.find((u: any) => u.id === editingUserId);
+        if (original?.name === name && original?.email === email) {
+          closeModal();
+          return;
+        }
+        await updateUser({ variables: { id: editingUserId, name, email } });
+        toast.success("User updated successfully", {
+          style: {
+            border: "1px solid #713200",
+            padding: "16px",
+            color: "#713200",
+          },
+          iconTheme: {
+            primary: "#713200",
+            secondary: "#FFFAEE",
+          },
+        });
+      } else {
+        await createUser({ variables: { name, email } });
+        toast.success("User created successfully", {
+          style: {
+            border: "1px solid #713200",
+            padding: "16px",
+            color: "#713200",
+          },
+          iconTheme: {
+            primary: "#713200",
+            secondary: "#FFFAEE",
+          },
+        });
       }
-      await updateUser({ variables: { id: editingUserId, name, email } });
-    } else {
-      await createUser({ variables: { name, email } });
-    }
 
-    closeModal();
-    refetch();
+      closeModal();
+      refetch();
+    } catch {
+      toast.error("Operation failed", {
+        style: {
+          border: "1px solid #713200",
+          padding: "16px",
+          color: "#713200",
+        },
+        iconTheme: {
+          primary: "#713200",
+          secondary: "#FFFAEE",
+        },
+      });
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteUser({ variables: { id } });
-    refetch();
+    try {
+      await deleteUser({ variables: { id } });
+      toast.success("User deleted successfully", {
+        style: {
+          border: "1px solid #713200",
+          padding: "16px",
+          color: "#713200",
+        },
+        iconTheme: {
+          primary: "#713200",
+          secondary: "#FFFAEE",
+        },
+      });
+      refetch();
+    } catch {
+      toast.error("Failed to delete user", {
+        style: {
+          border: "1px solid #713200",
+          padding: "16px",
+          color: "#713200",
+        },
+        iconTheme: {
+          primary: "#713200",
+          secondary: "#FFFAEE",
+        },
+      });
+    }
   };
 
   const handleViewUser = (id: string) => {
@@ -92,6 +154,7 @@ function App() {
 
   return (
     <div className="p-6 w-full mx-auto">
+      <Toaster position="top-right" reverseOrder={false} />
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">User Management</h1>
         <motion.button
