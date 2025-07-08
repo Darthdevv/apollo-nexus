@@ -1,56 +1,18 @@
 import "./App.css";
-import { useQuery, useLazyQuery, useMutation, gql } from "@apollo/client";
+import { useQuery, useLazyQuery, useMutation } from "@apollo/client";
 import { useState } from "react";
 import Card from "./components/Card";
 import PlusIcon from "./assets/icons/PlusIcon";
 import { motion, AnimatePresence } from "framer-motion";
-
-// GraphQL Queries & Mutations
-const GET_USERS = gql`
-  query GetUsers {
-    users {
-      id
-      name
-      email
-    }
-  }
-`;
-
-const GET_USER_BY_ID = gql`
-  query GetUserById($id: ID!) {
-    user(id: $id) {
-      id
-      name
-      email
-    }
-  }
-`;
-
-const CREATE_USER = gql`
-  mutation CreateUser($name: String!, $email: String!) {
-    createUser(name: $name, email: $email) {
-      id
-      name
-      email
-    }
-  }
-`;
-
-const UPDATE_USER = gql`
-  mutation UpdateUser($id: ID!, $name: String, $email: String) {
-    updateUser(id: $id, name: $name, email: $email) {
-      id
-      name
-      email
-    }
-  }
-`;
-
-const DELETE_USER = gql`
-  mutation DeleteUser($id: ID!) {
-    deleteUser(id: $id)
-  }
-`;
+import UserFormModal from "./components/forms/UserFormModal";
+import UserDetailsModal from "./components/forms/UserDetailsModal";
+import {
+  GET_USERS,
+  GET_USER_BY_ID,
+  CREATE_USER,
+  UPDATE_USER,
+  DELETE_USER,
+} from "./graphql/userOperations";
 
 function App() {
   const { loading, error, data, refetch } = useQuery(GET_USERS);
@@ -60,9 +22,7 @@ function App() {
   const [
     getUserById,
     { loading: loadingUser, data: userData, error: errorUser },
-  ] = useLazyQuery(GET_USER_BY_ID, {
-    fetchPolicy: "network-only",
-  });
+  ] = useLazyQuery(GET_USER_BY_ID, { fetchPolicy: "network-only" });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -143,7 +103,6 @@ function App() {
         </motion.button>
       </div>
 
-      {/* User List */}
       <ul className="space-y-4">
         {data.users.map((user: { id: string; name: string; email: string }) => (
           <motion.li
@@ -163,108 +122,28 @@ function App() {
         ))}
       </ul>
 
-      {/* Create/Edit Modal */}
       <AnimatePresence>
-        {modalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg space-y-4 border border-border"
-            >
-              <h2 className="text-lg font-semibold mb-2">
-                {editingUserId ? "Edit User" : "Add New User"}
-              </h2>
-              <input
-                type="text"
-                placeholder="Name"
-                className="border border-border bg-cardcolor rounded-lg p-2 w-full text-base"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                className="border border-border bg-cardcolor rounded-lg p-2 w-full text-base"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-              <div className="flex justify-end space-x-2 mt-4">
-                <button
-                  onClick={closeModal}
-                  className="text-foreground border px-4 py-2 rounded"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  className="bg-foreground text-background px-4 py-2 rounded"
-                  disabled={creating || updating}
-                >
-                  {editingUserId ? "Update" : "Create"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+        <UserFormModal
+          isOpen={modalOpen}
+          onClose={closeModal}
+          onSubmit={handleSubmit}
+          name={form.name}
+          email={form.email}
+          onNameChange={(val) => setForm({ ...form, name: val })}
+          onEmailChange={(val) => setForm({ ...form, email: val })}
+          isEditing={!!editingUserId}
+          loading={creating || updating}
+        />
       </AnimatePresence>
 
-      {/* User Detail Modal */}
       <AnimatePresence>
-        {viewingUserId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center bg-black/50 dark:bg-white/10 z-50"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="bg-background p-6 rounded-lg w-full max-w-md shadow-lg space-y-4 border border-border"
-            >
-              {loadingUser ? (
-                <p className="text-center">Loading user...</p>
-              ) : errorUser ? (
-                <p className="text-center text-red-500">
-                  Error: {errorUser.message}
-                </p>
-              ) : userData?.user ? (
-                <>
-                  <h2 className="text-xl font-bold">User Details</h2>
-                  <p>
-                    <span className="font-semibold">Name:</span>{" "}
-                    {userData.user.name}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Email:</span>{" "}
-                    {userData.user.email}
-                  </p>
-                </>
-              ) : (
-                <p className="text-center">User not found</p>
-              )}
-
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={closeDetailModal}
-                  className="bg-foreground text-background px-4 py-2 rounded"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+        <UserDetailsModal
+          isOpen={!!viewingUserId}
+          user={userData?.user}
+          loading={loadingUser}
+          error={errorUser}
+          onClose={closeDetailModal}
+        />
       </AnimatePresence>
     </div>
   );
